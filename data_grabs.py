@@ -4,7 +4,6 @@ import zipfile
 import xml
 import re
 import datetime
-import datetime as dt
 import xml.etree.ElementTree as ET
 from bs4 import BeautifulSoup
 import os
@@ -196,7 +195,7 @@ def minutes_dates():
         releaseDates = [re.findall('[A-Z][a-z]*[\s]*[0-9]*\,[\s]*[0-9]{4}',releases[ii][0])[0] for ii in releaseInd]
         minDates = [re.findall('[0-9]{8}',str(paragraphs[ii]))[0] for ii in releaseInd]
 
-        minDatesD = [dt.datetime.strptime(dd, '%Y%m%d') for dd in minDates]
+        minDatesD = [datetime.datetime.strptime(dd, '%Y%m%d') for dd in minDates]
         releaseDatesD = []
         for dd in releaseDates:
             try:

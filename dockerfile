@@ -1,6 +1,5 @@
 FROM python:3.7.4
 
-LABEL description="Python image for asymetric policy" 
 LABEL maintainer="Joe Saia <joe5saia@gmail.com>"
 
 WORKDIR /app
