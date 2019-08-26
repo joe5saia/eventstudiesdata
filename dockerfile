@@ -6,6 +6,7 @@ WORKDIR /app
 COPY requirements.txt /app/
 RUN pip install -r requirements.txt
 
-COPY . /app
+COPY ./code /app
 
-CMD ["python3", "data_grabs.py"]
+CMD ["/bin/bash"]
+#CMD ["python3", "data_grabs.py"]

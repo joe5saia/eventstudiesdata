@@ -9,3 +9,7 @@ announcements.
 ## Docker Commands
 
 ## Data Structure
+
+| Name | releaseyear | releasemonth | releaseday | releasehour | releaseminute | freq | coveredyear | coveredperiod |
+| ---  | ---  | ----- | --- | ---- | ------ | ---- | ----------- | ------------- |
+| Series name | Year of release | Month of release | Day of release | Hour of release | Minute of Release | Frequency of data (monthly = 12, quarterly = 4, annual = 1) | Year that the data released pertains to | Within year period of data (either month or quarter) |
