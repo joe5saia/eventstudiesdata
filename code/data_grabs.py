@@ -3,8 +3,8 @@ import pandas as pd
 import zipfile
 import xml
 import re
-import datetime
 import datetime as dt
+from datetime import datetime as dtdt
 import xml.etree.ElementTree as ET
 from bs4 import BeautifulSoup
 import os
@@ -18,9 +18,41 @@ proc_dir = proj_dir + 'data/processed/'
 down_dir = proc_dir + 'downloads/'
 
 
+def parseESRdate(raw):
+    ################################################################################
+    # some dates are in mmddyy format and others are in mmddyyyy format
+    # Return a date object using the correct formating
+    ################################################################################
+    if len(raw) == 8:
+        return dtdt.strptime(raw, '%m%d%Y')
+    elif len(raw) == 6:
+        return dtdt.strptime(raw, '%m%d%y')
+    else:
+        print(f'{raw} was an invalid date. Replacing with 19000101')
+        return dtdt.strptime('01011900', '%m%d%Y')
+
+
+def parseESRcovereddate(rawstring):
+    ################################################################################
+    # Cleans the <a \a> field from release links on the BLS website and turns the
+    # the date into a datetime object
+    ################################################################################
+    title = re.findall(
+        '[A-Z][a-z]{1,} [0-9]{4} Employment', str(rawstring.a).replace(u'\xa0', ' '))[0]
+    d = ' '.join(title.split()[0:2])
+    return dtdt.strptime(d, '%B %Y')
+
+
 def blsjobsdays():
     ################################################################################
     # Grab BLS job's report dates
+    # Description: The BLS issues a press announcement for each employment situation
+    # report release. 'https://www.bls.gov/bls/news-release/empsit.htm' is the page
+    # that links to each of these reports. We can get the dates by parsing the relevant
+    # links.
+    #  TODO : Check that these dates are correct for reports that were delayed due
+    # to government shutdowns
+    # This function will eventually be superseeded by the BLS release calendar method
     ################################################################################
     url = 'https://www.bls.gov/bls/news-release/empsit.htm'
     raw = urllib.request.urlopen(url).read()
@@ -30,39 +62,38 @@ def blsjobsdays():
     raw = bs.findAll(lambda tag: tag.name == 'li' and len(
         re.findall('empsit\_[0-9]{6,8}\.', str(tag))) > 0)
 
-    T = []
-    D = []
-    M = []
-    Y = []
-    for rr in raw:
-        t = ' '.join(rr.text.split()[0:2])
-        m = datetime.datetime.strptime(t, '%B %Y').month
-        y = datetime.datetime.strptime(t, '%B %Y').year
-        if len(re.findall('empsit\_[0-9]{8}\.', str(rr))) > 0:
-            dRaw = re.findall('empsit\_[0-9]{8}', str(rr))[0]
-            dRaw = re.split('\_', dRaw)[1]
-            d = datetime.datetime.strptime(dRaw, '%m%d%Y').date()
-        elif len(re.findall('empsit\_[0-9]{6}\.', str(rr))) > 0:
-            dRaw = re.findall('empsit\_[0-9]{6}', str(rr))[0]
-            dRaw = re.split('\_', dRaw)[1]
-            d = datetime.datetime.strptime(dRaw, '%m%d%y').date()
-        else:
-            print("OH NO! NOT WORKING " + rr)
-        T.append(t)
-        D.append(d)
-        Y.append(y)
-        M.append(m)
+    releasedays = [parseESRdate(re.findall(
+        '[0-9]{6,8}', str(x.a))[0]).day for x in raw]
+    releasemonths = [parseESRdate(re.findall(
+        '[0-9]{6,8}', str(x.a))[0]).month for x in raw]
+    releaseyears = [parseESRdate(re.findall(
+        '[0-9]{6,8}', str(x.a))[0]).year for x in raw]
 
-    pd.DataFrame({'DataMonth': M, 'DataYear': Y, 'ReleaseDate': D}).to_csv(
-        proc_dir + 'employment_dates.csv', index=False, header=True)
+    coveredyear = [parseESRcovereddate(x).year for x in raw]
+    coveredmonth = [parseESRcovereddate(x).month for x in raw]
+
+    return pd.DataFrame({'release': 'Employment Situation Report', 'releaseyear': releaseyears, 'releasemonth': releasemonths,
+                         'releaseday': releasedays, 'releasehour': 8, 'releaseminute': 30, 'freq': 12,
+                         'coveredyear': coveredyear, 'coveredperiod': coveredmonth})
 
 
 def fomcdates():
+    ################################################################################
+    # Grabs the FOMC meeting dates
+    # Description: The FOMC releases a statment after their meetings (historically
+    # only when a rate decision was made). The FOMC posts its meeting materials on
+    # its website. This script parses the webpage for the link to the minutes and
+    # saves them.
+    #  TODO : We should honestly porobably be using the meeting dates displayed on
+    # the webpage and not the minute links but this seems to work.
+    # Also need to check to make sure statements are always released at 2:30
+    ################################################################################
+    # Grab the non-historical meetings first
     url = 'https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm'
     raw = urllib.request.urlopen(url).read()
     datesRaw = re.findall('monetarypolicy/fomcminutes[0-9]{8}.htm', str(raw))
-    datesStr = list(set([re.findall('[0-9]{8}', dd)[0] for dd in datesRaw]))
-    dates = [datetime.datetime.strptime(dd, '%Y%m%d') for dd in datesStr]
+    datesStr = [re.findall('[0-9]{8}', dd)[0] for dd in datesRaw]
+    dates = [dtdt.strptime(dd, '%Y%m%d') for dd in datesStr]
 
     # Code to get historical meetings
     # Get years first
@@ -70,27 +101,35 @@ def fomcdates():
     start = 1965
     end = min(dates).year
 
+    # The historical data has a seperate page for each year. Loop through them
     for year in range(start, end):
         url = 'https://www.federalreserve.gov/monetarypolicy/fomchistorical' + \
             str(year) + '.htm'
         raw = urllib.request.urlopen(url).read()
         datesRaw = re.findall(
             'monetarypolicy/files/FOMC[0-9]{8}Agenda.pdf', str(raw))
-        datesStr.extend(
-            list(set([re.findall('[0-9]{8}', dd)[0] for dd in datesRaw])))
+        datesStr.extend([re.findall('[0-9]{8}', dd)[0] for dd in datesRaw])
 
-    dates = [datetime.datetime.strptime(dd, '%Y%m%d') for dd in datesStr]
+    dates = [dtdt.strptime(dd, '%Y%m%d') for dd in datesStr]
     dates.sort()
-    pd.DataFrame(dates, columns=['date']).to_csv(
-        proc_dir + 'fomc_dates.csv', index=False, header=True)
+
+    releasedays = [x.day for x in dates]
+    releasemonths = [x.month for x in dates]
+    releaseyears = [x.year for x in dates]
+
+    coveredday = [(x - dtdt(x.year, 1, 1)).days + 1 for x in dates]
+
+    return pd.DataFrame({'release': 'FOMC meeting', 'releaseyear': releaseyears, 'releasemonth': releasemonths,
+                         'releaseday': releasedays, 'releasehour': 2, 'releaseminute': 30, 'freq': 365,
+                         'coveredyear': releaseyears, 'coveredperiod': coveredday})
 
 
 def parseReleaseDates(dd):
     try:
-        d = datetime.datetime.strptime(dd, '%b %d, %Y')
+        d = dtdt.strptime(dd, '%b %d, %Y')
     except:
         try:
-            d = datetime.datetime.strptime(dd, '%B %d, %Y')
+            d = dtdt.strptime(dd, '%B %d, %Y')
         except:
             pass
     return(d)
@@ -102,7 +141,7 @@ def minutes_dates():
     raw = urllib.request.urlopen(url).read()
     datesRaw = re.findall('monetarypolicy/fomcminutes[0-9]{8}.htm', str(raw))
     datesStr = list(set([re.findall('[0-9]{8}', dd)[0] for dd in datesRaw]))
-    dates = [datetime.datetime.strptime(dd, '%Y%m%d') for dd in datesStr]
+    dates = [dtdt.strptime(dd, '%Y%m%d') for dd in datesStr]
     lastYearHistorical = min(dates).year-1
 
     # Grab the minute release dates
@@ -132,15 +171,18 @@ def minutes_dates():
         minDates = [re.findall('[0-9]{8}', str(paragraphs[ii]))[0]
                     for ii in releaseInd]
 
-        minDatesD = [datetime.datetime.strptime(
-            dd, '%Y%m%d') for dd in minDates]
+        minDatesD = [dt.datetime.strptime(dd, '%Y%m%d') for dd in minDates]
         releaseDatesD = [parseReleaseDates(dd) for dd in releaseDates]
         releaseDays = [x.day for x in releaseDatesD]
         releaseMonths = [x.month for x in releaseDatesD]
         releaseYears = [x.year for x in releaseDatesD]
+        coveredYear = [x.year for x in minDatesD]
+        coveredPeriod = [(x - dt.datetime(x.year, 1, 1)
+                          ).days + 1 for x in minDatesD]
 
-        out = pd.DataFrame({'name': 'FOMC minutes', 'month': releaseMonths,
-                            'year': year, 'day': releaseDays, 'hour': 2, 'minute': 30})
+        out = pd.DataFrame({'release': 'FOMC minutes', 'releaseyear': year, 'releasemonth': releaseMonths,
+                            'releaseday': releaseDays, 'releasehour': 14, 'releaseminute': 00, 'freq': 365,
+                            'coveredyear': coveredYear, 'coveredperiod': coveredPeriod})
 
         datesDFyear = pd.DataFrame(
             {'release': releaseDatesD, 'minutes': minDatesD})
@@ -267,10 +309,3 @@ def getBLScalendars():
     for yy in range(2017, 2019):
         out.append(parseBLScalendar(yy))
     return(out)
-
-
-# a = getBLScalendars()
-# print(a)
-
-a = minutes_dates()
-print(a.head())
