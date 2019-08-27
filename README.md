@@ -4,7 +4,9 @@ Docker container to make data set with macroeconomic data announcements.
 ## Summary
 This is a simple docker app to assemble a database with information on
 the timings of various macroeconomic data releases and Federal Reserve
-announcements.
+announcements. The only goal is spit out a file with as many as possible
+macroeconomic events in a standarized format that one can use in 
+any project. 
 
 ## Docker Commands
 
