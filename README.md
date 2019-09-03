@@ -14,6 +14,8 @@ any project.
 `docker run -it --rm -v </output/directory>:/app/data/  asypython` runs the container.
 The file `macro_release_dates.csv` will be placed in `/output/directory`. 
 
+The docker containter can also be run with the following command which pulls the image
+from docker hub `docker run -it --rm -v </output/directory>:/app/data/  joe5saia/macroevents`
 
 ## Data Structure
 
