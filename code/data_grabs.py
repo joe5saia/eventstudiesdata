@@ -11,11 +11,7 @@ import os
 
 # Directories
 proj_dir = '/app/'  # '/research/hf_factors/' ## UPDATE THIS
-rawdata_dir = proj_dir + 'data/raw/'
-bloomberg_dir = rawdata_dir + 'bloomberg/'
-fred_dir = rawdata_dir + 'FRED/'
-proc_dir = proj_dir + 'data/processed/'
-down_dir = proc_dir + 'downloads/'
+data_dir = proj_dir + 'data/'
 
 
 def parseESRdate(raw):
@@ -50,10 +46,11 @@ def blsjobsdays():
     # report release. 'https://www.bls.gov/bls/news-release/empsit.htm' is the page
     # that links to each of these reports. We can get the dates by parsing the relevant
     # links.
-    #  TODO : Check that these dates are correct for reports that were delayed due
+    # TODO : Check that these dates are correct for reports that were delayed due
     # to government shutdowns
     # This function will eventually be superseeded by the BLS release calendar method
     ################################################################################
+    print('Reading in BLS jobs day dates')
     url = 'https://www.bls.gov/bls/news-release/empsit.htm'
     raw = urllib.request.urlopen(url).read()
 
@@ -73,8 +70,8 @@ def blsjobsdays():
     coveredmonth = [parseESRcovereddate(x).month for x in raw]
 
     return pd.DataFrame({'release': 'Employment Situation Report', 'releaseyear': releaseyears, 'releasemonth': releasemonths,
-                         'releaseday': releasedays, 'releasehour': 8, 'releaseminute': 30, 'freq': 12,
-                         'coveredyear': coveredyear, 'coveredperiod': coveredmonth})
+                         'releaseday': releasedays, 'releasehour': 8, 'releaseminute': 30,
+                         'coveredyear': coveredyear, 'coveredperiod': coveredmonth, 'freq': 12, })
 
 
 def fomcdates():
@@ -89,6 +86,7 @@ def fomcdates():
     # Also need to check to make sure statements are always released at 2:30
     ################################################################################
     # Grab the non-historical meetings first
+    print('Reading FOMC meeting dates')
     url = 'https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm'
     raw = urllib.request.urlopen(url).read()
     datesRaw = re.findall('monetarypolicy/fomcminutes[0-9]{8}.htm', str(raw))
@@ -103,6 +101,7 @@ def fomcdates():
 
     # The historical data has a seperate page for each year. Loop through them
     for year in range(start, end):
+        print('Reading FOMC meeting dates for ' + str(year))
         url = 'https://www.federalreserve.gov/monetarypolicy/fomchistorical' + \
             str(year) + '.htm'
         raw = urllib.request.urlopen(url).read()
@@ -120,8 +119,8 @@ def fomcdates():
     coveredday = [(x - dtdt(x.year, 1, 1)).days + 1 for x in dates]
 
     return pd.DataFrame({'release': 'FOMC meeting', 'releaseyear': releaseyears, 'releasemonth': releasemonths,
-                         'releaseday': releasedays, 'releasehour': 2, 'releaseminute': 30, 'freq': 365,
-                         'coveredyear': releaseyears, 'coveredperiod': coveredday})
+                         'releaseday': releasedays, 'releasehour': 2, 'releaseminute': 30,
+                         'coveredyear': releaseyears, 'coveredperiod': coveredday,  'freq': 365})
 
 
 def parseReleaseDates(dd):
@@ -132,11 +131,12 @@ def parseReleaseDates(dd):
             d = dtdt.strptime(dd, '%B %d, %Y')
         except:
             pass
-    return(d)
+    return d
 
 
 def minutes_dates():
     # Find when the historical data starts
+    print('Reading in FOMC minutes dates')
     url = 'https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm'
     raw = urllib.request.urlopen(url).read()
     datesRaw = re.findall('monetarypolicy/fomcminutes[0-9]{8}.htm', str(raw))
@@ -147,8 +147,8 @@ def minutes_dates():
     # Grab the minute release dates
     datesDF = pd.DataFrame({'release': [], 'minutes': []})
     firstYear = 1993
-    for year in range(firstYear, lastYearHistorical+1):
-        print("Reading in data for the year " + str(year))
+    for year in range(firstYear, lastYearHistorical + 1):
+        print('Reading in FOMC minutes dates for ' + str(year))
         if year <= lastYearHistorical:
             url = "https://www.federalreserve.gov/monetarypolicy/fomchistorical" + \
                 str(year) + ".htm"
@@ -181,19 +181,12 @@ def minutes_dates():
                           ).days + 1 for x in minDatesD]
 
         out = pd.DataFrame({'release': 'FOMC minutes', 'releaseyear': year, 'releasemonth': releaseMonths,
-                            'releaseday': releaseDays, 'releasehour': 14, 'releaseminute': 00, 'freq': 365,
-                            'coveredyear': coveredYear, 'coveredperiod': coveredPeriod})
-
-        datesDFyear = pd.DataFrame(
-            {'release': releaseDatesD, 'minutes': minDatesD})
-
-        datesDF = datesDF.append(datesDFyear)
-    # print(datesDF)
+                            'releaseday': releaseDays, 'releasehour': 14, 'releaseminute': 00,
+                            'coveredyear': coveredYear, 'coveredperiod': coveredPeriod, 'freq': 365})
 
     # Hack to drop duplicate rows. Not sure whats going on here
-    datesDF.drop_duplicates(inplace=True)
-
-    # datesDF.to_csv(proc_dir + 'minutes_dates.csv', index=False, header=True)
+    out.drop_duplicates(inplace=True)
+    return out
 
 
 def parseDates(datesIn):
@@ -221,9 +214,58 @@ def parseDates(datesIn):
     return (m, d, H, M)
 
 
+def calcovered(raw):
+    # Take in date string and return a tuple (freq, covered period, covered year)
+    # Just a bunch of logic to handle BLS varried date formatting
+    # returns (0,0, 2099) for annoying releases that cannot be easily parsed
+    clean = re.split('strong>', str(raw.contents[0]))[2].strip()[4:-4].strip()
+    # print(clean)
+    if clean == '':
+        return (0, 0, 2099)
+    elif 'Bi-Annual' in clean:
+        return (0, 0, 2099)
+    elif 'Biennial' in clean:
+        return (0, 0, 2099)
+    elif 'Midyear' in clean:
+        return (0, 0, 2099)
+    elif 'Annual' in clean:
+        if clean == 'Annual':
+            return (0, 0, 2099)
+        else:
+            return (1, 1, int(re.split(' ', clean)[1]))
+    elif len(clean.split(' ')) == 1:
+        if len(clean.split('-')) == 1:
+            return (1, 1, int(clean))
+        else:
+            return (0, 0, 2099)
+    elif 'Quarter' in clean:
+        year = int(re.split(' ', clean)[2])
+        qnum = adj2num(re.split(' ', clean)[0])
+        return (4, qnum, year)
+    else:
+        year = int(re.split(' ', clean)[1])
+        mnum = dtdt.strptime(re.split(' ', clean)[0], '%B').month
+        return (12, mnum, year)
+
+
+def adj2num(raw):
+    if raw == 'First':
+        return 1
+    elif raw == 'Second':
+        return 2
+    elif raw == 'Third':
+        return 3
+    elif raw == "Fourth":
+        return 4
+    else:
+        print(raw + " cannot be parsed for a quarter number")
+        return 0
+
 ##----------------------------------------------------------------------------##
 ##-- FIRST, WORK WITH RECENT RELEASES WHICH ARE WRITTEN IN TABLE FORMAT ------##
 ##----------------------------------------------------------------------------##
+
+
 def parseHTML(bs, year):
     if year < 2018:
         tables = bs.findAll(lambda tag: tag.name == 'table')
@@ -233,6 +275,7 @@ def parseHTML(bs, year):
     dates = []
     times = []
     descs = []
+    covered = []
     for table in tables:
         rows = table.findAll(lambda tag: tag.name == 'tr')
         for row in rows:
@@ -244,7 +287,10 @@ def parseHTML(bs, year):
                     elif col['class'][0] == 'time-cell':
                         times.append(col.text)
                     elif col['class'][0] == 'desc-cell':
-                        descs.append(col.text)
+                        descs.append(
+                            re.split('strong>', str(col.contents[0]))[1][0:-2])
+                        covered.append(calcovered(col))
+
     datesParsed = [dt.datetime.strptime(dd, '%A, %B %d, %Y') for dd in dates]
     times = [tt.replace('\xa0', '12:00 AM') for tt in times]
     timesParsed = [dt.datetime.strptime(dd, '%I:%M %p') for dd in times]
@@ -252,13 +298,15 @@ def parseHTML(bs, year):
     releaseDAY = [dd.day for dd in datesParsed]
     releaseMIN = [dd.minute for dd in timesParsed]
     releaseHOUR = [dd.hour for dd in timesParsed]
-    descs = [re.split('for', dd)[0].strip() for dd in descs]
+    coveredyear = [x[2] for x in covered]
+    coveredperiod = [x[1] for x in covered]
+    coveredfreq = [x[0] for x in covered]
     for rr in ['\(Annual\)', '\,[\s]+[0-9]{4}', '\(Quarterly\)', '\(Monthly\)',
                '\:[\s]+[0-9\-]+', '\(P\)', '\(R\)']:
         descs = [re.sub(rr, '', dd).strip() for dd in descs]
 
-    out = pd.DataFrame({'name': descs, 'month': releaseMON, 'year': year, 'day': releaseDAY,
-                        'hour': releaseHOUR, 'minute': releaseMIN})
+    out = pd.DataFrame({'release': descs, 'releaseyear': year, 'releasemonth': releaseMON, 'releaseday': releaseDAY,
+                        'releasehour': releaseHOUR, 'releaseminute': releaseMIN, 'coveredyear': coveredyear, 'coveredperiod': coveredperiod, 'freq': coveredfreq})
     return (out)
 
 ##----------------------------------------------------------------------------##
@@ -287,8 +335,8 @@ def parseTXT(bs, year):
     times = [re.sub('[\s]+', ' ', tt) for tt in times]
     releaseMON, releaseDAY, releaseHOUR, releaseMIN = parseDates(times)
 
-    out = pd.DataFrame({'name': releaseName, 'month': releaseMON, 'year': year, 'day': releaseDAY,
-                        'hour': releaseHOUR, 'minute': releaseMIN})
+    out = pd.DataFrame({'release': releaseName, 'releaseyear': year, 'releasemonth': releaseMON, 'releaseday': releaseDAY,
+                        'releasehour': releaseHOUR, 'releaseminute': releaseMIN, 'coveredyear': 1950, 'coveredperiod': 1, 'freq': 0})
     return(out)
 
 
@@ -301,11 +349,30 @@ def parseBLScalendar(year):
     releaseDF = parseHTML(bs, year)
     if releaseDF.shape[0] == 0:
         releaseDF = parseTXT(bs, year)
-    return(releaseDF)
+    return releaseDF
 
 
 def getBLScalendars():
     out = parseBLScalendar(1999)
-    for yy in range(2017, 2019):
-        out.append(parseBLScalendar(yy))
-    return(out)
+    for yy in range(1999, 2019):
+        out = out.append(parseBLScalendar(yy))
+    return out.drop_duplicates()
+
+
+def main():
+    #df = blsjobsdays()
+    df = getBLScalendars()
+    df = df.append(fomcdates(), ignore_index=True)
+    df = df.append(minutes_dates(), ignore_index=True)
+    df['releasedate'] = pd.Series([dtdt(df.loc[i, 'releaseyear'], df.loc[i, 'releasemonth'], df.loc[i,
+                                                                                                    'releaseday'], df.loc[i, 'releasehour'], df.loc[i, 'releaseminute']) for i in range(len(df))])
+
+    df = df[['releasedate', 'release', 'releaseyear', 'releasemonth',
+             'releaseday', 'releasehour', 'releaseminute', 'coveredyear', 'coveredperiod', 'freq']]
+    df = df.set_index(['releasedate', 'release'])
+    df.sort_index(inplace=True)
+    df.to_csv(data_dir + 'macro_release_dates.csv')
+    return df
+
+
+main()
