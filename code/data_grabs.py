@@ -371,7 +371,7 @@ def main():
              'releaseday', 'releasehour', 'releaseminute', 'coveredyear', 'coveredperiod', 'freq']]
     df = df.set_index(['releasedate', 'release'])
     df.sort_index(inplace=True)
-    df.to_csv(data_dir + 'macro_release_dates.csv')
+    df.to_csv('/app/output/macro_release_dates.csv')
     return df
 
 
