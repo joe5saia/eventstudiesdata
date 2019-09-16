@@ -145,9 +145,9 @@ def minutes_dates():
     lastYearHistorical = min(dates).year-1
 
     # Grab the minute release dates
-    datesDF = pd.DataFrame({'release': [], 'minutes': []})
     firstYear = 1993
-    for year in range(firstYear, lastYearHistorical + 1):
+    outdfs = []
+    for year in range(firstYear, lastYearHistorical + 2):
         print('Reading in FOMC minutes dates for ' + str(year))
         if year <= lastYearHistorical:
             url = "https://www.federalreserve.gov/monetarypolicy/fomchistorical" + \
@@ -180,10 +180,11 @@ def minutes_dates():
         coveredPeriod = [(x - dt.datetime(x.year, 1, 1)
                           ).days + 1 for x in minDatesD]
 
-        out = pd.DataFrame({'release': 'FOMC minutes', 'releaseyear': year, 'releasemonth': releaseMonths,
-                            'releaseday': releaseDays, 'releasehour': 14, 'releaseminute': 00,
-                            'coveredyear': coveredYear, 'coveredperiod': coveredPeriod, 'freq': 365})
-
+        outdfs.append(pd.DataFrame({'release': 'FOMC minutes', 'releaseyear': releaseYears, 'releasemonth': releaseMonths,
+                                    'releaseday': releaseDays, 'releasehour': 14, 'releaseminute': 00,
+                                    'coveredyear': coveredYear, 'coveredperiod': coveredPeriod, 'freq': 365}))
+    out = pd.concat(outdfs)
+    out = out.sort_values(['releaseyear', 'releasemonth', 'releaseday'])
     # Hack to drop duplicate rows. Not sure whats going on here
     out.drop_duplicates(inplace=True)
     return out
