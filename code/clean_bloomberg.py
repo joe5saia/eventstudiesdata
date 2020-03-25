@@ -218,7 +218,7 @@ speeches = speeches.loc[[len(re.findall('[\s^]+[Vv]ote[s]*[\s$]+',dd))==0 for dd
 speeches = speeches.loc[speeches.Category.notna(),:]
 
 ## Duplicates: First, we can drop duplicate person/date/time. But we need to look
-## into multiple speeches on one day at different times--indicates taht timestamp
+## into multiple speeches on one day at different times--indicates that timestamp
 ## may be wrong.
 speeches = speeches.loc[~speeches.duplicated(subset=['date','releasehour','releaseminute','lastNames'],keep='first'),:]
 twoSpeechesOneDay = speeches.loc[speeches.duplicated(subset=['date','lastNames'],keep=False),:]
