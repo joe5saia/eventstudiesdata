@@ -8,5 +8,6 @@ COPY requirements.txt /app/
 RUN pip --disable-pip-version-check --no-cache-dir install -r requirements.txt
 
 COPY ./code/ /app
+COPY run_python.sh /app
 
-CMD ["python3", "data_grabs.py"]
+CMD ["bash", "/app/run_python.sh"]

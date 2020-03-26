@@ -8,14 +8,14 @@ import pandas as pd
 import datetime as dt
 import os
 
-bb_mins = pd.read_csv('/app/data/processed/bb_FOMCminutes.csv') # Fed minutes
-bb_stats = pd.read_csv('/app/data/processed/bb_FOMCstatements.csv') # Fed Statements
-bls = pd.read_csv('/app/data/processed/macro_release_dates.csv') # BLS data
+bb_mins = pd.read_csv('/app/output/bb_FOMCminutes.csv') # Fed minutes
+bb_stats = pd.read_csv('/app/output/bb_FOMCstatements.csv') # Fed Statements
+bls = pd.read_csv('/app/output/macro_release_dates.csv') # BLS data
 
 # For testing purposes
-bb_mins = pd.read_csv('data/processed/bb_FOMCminutes.csv') # Fed minutes
-bb_stats = pd.read_csv('data/processed/bb_FOMCstatements.csv') # Fed Statements
-bls = pd.read_csv('data/processed/macro_release_dates.csv') # BLS data
+#bb_mins = pd.read_csv('data/processed/bb_FOMCminutes.csv') # Fed minutes
+#bb_stats = pd.read_csv('data/processed/bb_FOMCstatements.csv') # Fed Statements
+#bls = pd.read_csv('data/processed/macro_release_dates.csv') # BLS data
 
 # Fix datetime 
 bls.loc[:, 'releasedate'] = pd.to_datetime(bls.loc[:, 'releasedate'])
@@ -41,4 +41,4 @@ bls.drop(bls.index[bls.release.eq('FOMC minutes') & bls.releasedate.dt.date.gt(b
 # Append the Bloomberg Data
 bls = bls.append(bb_stats).append(bb_mins)
 
-bls.to_csv('data/processed/macro_release_dates.csv', index=False)
+bls.to_csv('/app/output/macro_release_dates.csv', index=False)
