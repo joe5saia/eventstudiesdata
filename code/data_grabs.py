@@ -119,7 +119,7 @@ def fomcdates():
     coveredday = [(x - dtdt(x.year, 1, 1)).days + 1 for x in dates]
 
     return pd.DataFrame({'release': 'FOMC meeting', 'releaseyear': releaseyears, 'releasemonth': releasemonths,
-                         'releaseday': releasedays, 'releasehour': 2, 'releaseminute': 30,
+                         'releaseday': releasedays, 'releasehour': 14, 'releaseminute': 30,
                          'coveredyear': releaseyears, 'coveredperiod': coveredday,  'freq': 365})
 
 
