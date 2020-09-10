@@ -69,7 +69,7 @@ def blsjobsdays():
     coveredyear = [parseESRcovereddate(x).year for x in raw]
     coveredmonth = [parseESRcovereddate(x).month for x in raw]
 
-    return pd.DataFrame({'release': 'Employment Situation Report', 'releaseyear': releaseyears, 'releasemonth': releasemonths,
+    return pd.DataFrame({'release': 'Employment Situation', 'releaseyear': releaseyears, 'releasemonth': releasemonths,
                          'releaseday': releasedays, 'releasehour': 8, 'releaseminute': 30,
                          'coveredyear': coveredyear, 'coveredperiod': coveredmonth, 'freq': 12, })
 

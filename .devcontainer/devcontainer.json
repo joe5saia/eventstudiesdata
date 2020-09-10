@@ -1,7 +1,7 @@
 // For format details, see https://aka.ms/vscode-remote/devcontainer.json or this file's README at:
 // https://github.com/microsoft/vscode-dev-containers/tree/v0.134.1/containers/docker-existing-dockerfile
 {
-	"name": "Existing Dockerfile",
+	"name": "Event Studies Dev Container",
 
 	// Sets the run context to one level up instead of the .devcontainer folder.
 	"context": "..",
@@ -15,7 +15,8 @@
 	},
 
 	// Add the IDs of extensions you want installed when the container is created.
-	"extensions": []
+	"extensions": [],
+//	"mounts": [ "source=$(pwd)/../data/processed/,target=/app/output/,type=bind" ]
 
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
 	// "forwardPorts": [],
