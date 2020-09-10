@@ -14,17 +14,17 @@ proj_dir = '/app/'  # '/research/hf_factors/' ## UPDATE THIS
 data_dir = proj_dir + 'data/'
 
 
-def parseESRdate(raw):
+def parseESRdate(rawstring):
     ################################################################################
     # some dates are in mmddyy format and others are in mmddyyyy format
     # Return a date object using the correct formating
     ################################################################################
-    if len(raw) == 8:
-        return dtdt.strptime(raw, '%m%d%Y')
-    elif len(raw) == 6:
-        return dtdt.strptime(raw, '%m%d%y')
+    if len(rawstring) == 8:
+        return dtdt.strptime(rawstring, '%m%d%Y')
+    elif len(rawstring) == 6:
+        return dtdt.strptime(rawstring, '%m%d%y')
     else:
-        print(f'{raw} was an invalid date. Replacing with 19000101')
+        print(f'{rawstring} was an invalid date. Replacing with 19000101')
         return dtdt.strptime('01011900', '%m%d%Y')
 
 
@@ -48,7 +48,7 @@ def blsjobsdays():
     # links.
     # TODO : Check that these dates are correct for reports that were delayed due
     # to government shutdowns
-    # This function will eventually be superseeded by the BLS release calendar method
+    # https://www.bls.gov/bls/news-release/empsit.htm has more dates than the BLS calendar
     ################################################################################
     print('Reading in BLS jobs day dates')
     url = 'https://www.bls.gov/bls/news-release/empsit.htm'
@@ -361,18 +361,21 @@ def getBLScalendars():
 
 
 def main():
-    #df = blsjobsdays()
-    df = getBLScalendars()
-    df = df.append(fomcdates(), ignore_index=True)
-    df = df.append(minutes_dates(), ignore_index=True)
-    df['releasedate'] = pd.Series([dtdt(df.loc[i, 'releaseyear'], df.loc[i, 'releasemonth'], df.loc[i,
-                                                                                                    'releaseday'], df.loc[i, 'releasehour'], df.loc[i, 'releaseminute']) for i in range(len(df))])
+    df = blsjobsdays()
+    df = df.append(getBLScalendars(), ignore_index=True)
+    # Some data is pulled twice
+    df.drop_duplicates()
+    #df = df.append(fomcdates(), ignore_index=True)
+    #df = df.append(minutes_dates(), ignore_index=True)
+    df['releasedate'] = pd.Series([dtdt(df.loc[i, 'releaseyear'], df.loc[i, 'releasemonth'],
+                                        df.loc[i, 'releaseday'], df.loc[i, 'releasehour'], 
+                                        df.loc[i, 'releaseminute']) for i in range(len(df))])
 
     df = df[['releasedate', 'release', 'releaseyear', 'releasemonth',
              'releaseday', 'releasehour', 'releaseminute', 'coveredyear', 'coveredperiod', 'freq']]
     df = df.set_index(['releasedate', 'release'])
     df.sort_index(inplace=True)
-    df.to_csv('/app/output/macro_release_dates.csv')
+    df.to_csv('/app/output/bls_release_dates.csv')
     return df
 
 

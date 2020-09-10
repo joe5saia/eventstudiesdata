@@ -10,7 +10,7 @@ import os
 
 bb_mins = pd.read_csv('/app/output/bb_FOMCminutes.csv') # Fed minutes
 bb_stats = pd.read_csv('/app/output/bb_FOMCstatements.csv') # Fed Statements
-bls = pd.read_csv('/app/output/macro_release_dates.csv') # BLS data
+bls = pd.read_csv('/app/output/bls_release_dates.csv') # BLS data
 
 # For testing purposes
 #bb_mins = pd.read_csv('data/processed/bb_FOMCminutes.csv') # Fed minutes
